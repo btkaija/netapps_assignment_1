@@ -1,5 +1,6 @@
 import tweepy
 import socket
+import time
 
 APP_KEY = 'i0k5jBnZh5EV80BtT4yPgjH9U'
 APP_SECRET = 'loDNxg8tcFFSKghVj6FRhtsqaTecrmH2KIAdwcej3I0bwoUA13'
@@ -10,38 +11,66 @@ auth = tweepy.OAuthHandler(APP_KEY, APP_SECRET)
 auth.set_access_token(OAUTH_TOKEN, OAUTH_TOKEN_SECRET)
 
 api = tweepy.API(auth)
-new_tweet = ''
+new_tweet = api.user_timeline('btkaija')[0].text
 
-def send_ack_tweet():
-    print 'sending ack tweet....'
+#sends an acknowledgement tweet to @VTNetApps
+def send_ack_tweet(original_hashtag, sender):
+    print 'Sending Acknowledgement Tweet....'
+    api.update_status(sender + ' ACK #' + original_hashtag)
+    print 'Process complete'
 
 size = 1024
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
 
 while 1:
     my_tweets = api.user_timeline('btkaija')
     last_tweet = new_tweet
     new_tweet =  my_tweets[0].text
-    if(last_tweet != new_tweet):
+    if(last_tweet != new_tweet and 'ACK' not in new_tweet):
         print 'New Tweet Recieved! Checking format...'
-        #correct format: #ECE4564_192_168_1_1_50000_LEDON
-        hashtag = new_tweet.split('_')
-        print 'New Tweet: ', new_tweet
-        if(hashtag[0]=='#ECE4564'):
+        #correct format: @btkaija hello world!  #ECE4564_192_168_1_1_50000_LEDON
+        tweet_attr = new_tweet.split('#')
+        
+        full_hashtag = 'NONE'
+        
+        for word in tweet_attr:
+            #print word[0:7]
+            if word[0:7] == 'ECE4564':
+                full_hashtag = word
+        
+        #successful tweet!
+        if(full_hashtag != 'NONE'):
+            hashtag = full_hashtag.split('_')
+            print 'New Command: ', new_tweet
+
             try:
                 ip = hashtag[1]+'.'+hashtag[2]+'.'+hashtag[3]+'.'+hashtag[4]
-                port = hashtag[5]
-                command = hashtag[6]
+                port =int(hashtag[5])
+                command = hashtag[6].strip()
+                print 'Correct format found. Sending socket comm.'
                 #s.connect((ip,port))
                 #s.send(command)
+                data = 'SUCCESS'
                 #data = s.recv(size)
                 #s.close()
+                if data == 'SUCCESS':
+                    sender = '@'+ my_tweets[0].author.screen_name
+                    print 'Tweet ACK being sent to: '+sender
+                    send_ack_tweet(full_hashtag, sender)
+                elif data == 'FAIL':
+                    print 'Unsuccessful operation'
+                else:
+                    print 'Unrecognized response from server'
 
-                send_ack_tweet()
             except Exception, e:
                 print e
                 print 'Incorrect tweet format. Not sending socket comm.'
         else:
-            print 'Format error: No ECE4564 hashtag found.'
-#for tweet in public_tweets:
-#    print tweet.text
+            print 'Incorrect tweet format. Not sending socket comm.'
+
+    #this limits the querey time to less than 180 every 15 minutes which defined by twitter
+    print 'Waiting for new tweet...'
+    time.sleep(6)
+
+#end
