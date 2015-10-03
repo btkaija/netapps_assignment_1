@@ -15,8 +15,9 @@ new_tweet = api.user_timeline('btkaija')[0].text
 
 #sends an acknowledgement tweet to @VTNetApps
 def send_ack_tweet(original_hashtag, sender):
+    date = time.ctime()
     print 'Sending Acknowledgement Tweet....'
-    api.update_status(sender + ' ACK #' + original_hashtag)
+    api.update_status(sender + ' Operation performed on '+date +' #' + original_hashtag)
     print 'Process complete'
 
 size = 1024
@@ -27,7 +28,7 @@ while 1:
     my_tweets = api.user_timeline('btkaija')
     last_tweet = new_tweet
     new_tweet =  my_tweets[0].text
-    if(last_tweet != new_tweet and 'ACK' not in new_tweet):
+    if(last_tweet != new_tweet and 'Operation performed on ' not in new_tweet):
         print 'New Tweet Recieved! Checking format...'
         #correct format: @btkaija hello world!  #ECE4564_192_168_1_1_50000_LEDON
         tweet_attr = new_tweet.split('#')
@@ -49,11 +50,12 @@ while 1:
                 port =int(hashtag[5])
                 command = hashtag[6].strip()
                 print 'Correct format found. Sending socket comm.'
-                #s.connect((ip,port))
-                #s.send(command)
+                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                s.connect((ip,port))
+                s.send(command)
                 data = 'SUCCESS'
-                #data = s.recv(size)
-                #s.close()
+                data = s.recv(size)
+                s.close()
                 if data == 'SUCCESS':
                     sender = '@'+ my_tweets[0].author.screen_name
                     print 'Tweet ACK being sent to: '+sender
